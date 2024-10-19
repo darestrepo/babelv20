@@ -1,39 +1,18 @@
+from app.api.adapters.adapter_factory import AdapterFactory
+from pydantic import BaseModel
+
+class UniversalMessage(BaseModel):
+    platform: str
+    user_id: str
+    content: str
+    timestamp: str
+
 def transform_message(message: dict, platform: str) -> dict:
-    # Transform the message based on the platform
-    standardized = {
-        "platform": platform,
-        "user_id": message.get("user_id"),
-        "content": message.get("content"),
-        "timestamp": message.get("timestamp"),
-    }
-    return standardized
+    adapter = AdapterFactory.get_adapter(platform)
+    universal_message = adapter.to_universal(message)
+    return universal_message.dict()
 
 def transform_response(response: dict, platform: str) -> dict:
-    # Transform the response based on the platform
-    if platform == "whatsapp":
-        return {
-            "recipient_id": response.get("user_id"),
-            "message": response.get("content"),
-        }
-    elif platform == "messenger":
-        return {
-            "recipient_id": response.get("user_id"),
-            "message": response.get("content"),
-        }
-    elif platform == "telegram":
-        return {
-            "chat_id": response.get("user_id"),
-            "text": response.get("content"),
-        }
-    elif platform == "instagram":
-        return {
-            "recipient_id": response.get("user_id"),
-            "message": response.get("content"),
-        }
-    elif platform == "custom":
-        return {
-            "recipient_id": response.get("user_id"),
-            "message": response.get("content"),
-        }
-    # Handle other platforms similarly
-    return response
+    adapter = AdapterFactory.get_adapter(platform)
+    universal_message = adapter.from_universal(response)
+    return universal_message
