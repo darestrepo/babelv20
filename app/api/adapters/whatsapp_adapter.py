@@ -1,9 +1,8 @@
 from typing import Dict
 from app.api.adapters.platform_adapter import PlatformAdapter
 from app.api.models.message_model import MessageModel
-from app.api.models.configuration_model import ConfigurationModel
 
-class WhatsAppAdapter(PlatformAdapter):
+class WhatsappAdapter(PlatformAdapter):
     """
     Adapter for WhatsApp platform.
     Handles conversion between WhatsApp-specific messages and the universal format.
@@ -13,17 +12,25 @@ class WhatsAppAdapter(PlatformAdapter):
         """
         Convert WhatsApp message to universal MessageModel.
         """
+        message = platform_message["message"]
+        headers = platform_message["headers"]
+        query_params = platform_message["query_params"]
+
         return MessageModel(
-            message_id=platform_message.get("id"),
+            message_id=message.get("id"),
             platform="whatsapp",
-            sender_id=platform_message.get("from"),
-            receiver_id=platform_message.get("to"),
-            timestamp=platform_message.get("timestamp"),
-            message_type=platform_message.get("type"),
-            content=platform_message.get("text", {}).get("body"),
-            media=platform_message.get("media"),
-            interactive=None,  # WhatsApp may have interactive elements
-            metadata=platform_message
+            sender_id=message.get("from"),
+            receiver_id=message.get("to"),
+            timestamp=message.get("timestamp"),
+            message_type=message.get("type"),
+            content=message.get("text", {}).get("body"),
+            media=message.get("media"),
+            interactive=None,  # Adjust if WhatsApp supports interactive elements
+            metadata={
+                "headers": headers,
+                "query_params": query_params,
+                "original_message": message
+            }
         )
 
     def from_universal(self, universal_message: MessageModel) -> Dict:
@@ -45,13 +52,5 @@ class WhatsAppAdapter(PlatformAdapter):
         """
         Sends a message to WhatsApp using the provided configuration.
         """
-        import requests
-
-        whatsapp_message = self.from_universal(universal_message)
-        headers = {
-            'Authorization': f'Bearer {config["token"]}',
-            'Content-Type': 'application/json'
-        }
-        response = requests.post(config['webhook_url'], json=whatsapp_message, headers=headers)
-        response.raise_for_status()
-        return response.json()
+        # Implement the send logic
+        pass

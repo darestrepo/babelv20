@@ -1,9 +1,14 @@
-from api.services.message_transformer import transform_message
-from api.services.message_dispatcher import dispatch_message
-from api.models.message_model import MessageModel
+from app.api.adapters.adapter_factory import get_adapter
+from app.api.services.message_transformer import transform_message
+from fastapi.responses import JSONResponse
 
-async def process_custom_message(message: dict):
-    message_model = MessageModel(**message)
-    standardized_message = transform_message(message_model.dict(), platform="custom")
-    dispatch_message(standardized_message)
-    return {"status": "Message received and is being processed."}
+
+async def process_custom_message(full_message: dict) -> JSONResponse:
+    """Process a message from a custom source."""
+    try:
+        transformed_message = transform_message(full_message, "custom")
+        adapter = get_adapter("custom")
+        response = await adapter.process_message(transformed_message)
+        return response
+    except Exception as e:
+        raise

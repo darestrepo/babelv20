@@ -1,0 +1,34 @@
+# Environment variables
+.env
+
+# Cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Other common Python cache files
+.cache/
+.pytest_cache/
+
+# IDE-specific files (optional, but often ignored)
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+
+# Virtual environment
+venv/
+env/
+# .gitignore
+.env*
+env*
+__pycache__/
+*.DS_*
+play/
+play/*
+

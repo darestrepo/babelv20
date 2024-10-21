@@ -1,3 +1,5 @@
 from .platform_adapter import PlatformAdapter
-# Remove specific adapter imports
+# Import other base classes or utilities if needed
+
+__all__ = ['PlatformAdapter']
 

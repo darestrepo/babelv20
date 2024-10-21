@@ -1,6 +1,8 @@
 from celery import Celery
 from celery.result import AsyncResult
 from app.api.models.message_model import MessageModel
+from app.api.services.redis.redis_service import get_message_by_id, get_last_message_from_conversation
+from app.api.controllers.controller_factory import get_controller
 import os
 import json
 from dotenv import load_dotenv
@@ -17,6 +19,12 @@ print(f"Result backend: {result_backend}")
 celery_app = Celery('tasks', broker=broker_url, backend=result_backend)
 
 
+# Define separate queues
+celery_app.conf.task_routes = {
+    'tasks.process_message': 'process_messages_queue',
+}
+
+
 def process_message_task(transformed_message: MessageModel, countdown: int = 0, sync: bool = False) -> str:
     """
     Process the transformed message and send it to the broker.
@@ -31,7 +39,10 @@ def process_message_task(transformed_message: MessageModel, countdown: int = 0, 
     """
     message_id = transformed_message.message_id
     chat_conversation_id = transformed_message.chat_conversation_id
-    result = celery_app.send_task('tasks.process_message', args=[message_id, chat_conversation_id], countdown=countdown)
+    print(f"Processing message with message_id: {message_id} and chat_conversation_id: {chat_conversation_id}")
+    result = celery_app.send_task('tasks.process_message', 
+                                  args=[message_id, chat_conversation_id], 
+                                  countdown=countdown)
 
     if sync:
         actual_result = result.get()
@@ -40,18 +51,19 @@ def process_message_task(transformed_message: MessageModel, countdown: int = 0, 
         return
 
 
-@celery_app.task
+@celery_app.task(queue='return_messages_queue')
 def send_return_messages (chat_conversation_id, messages, message_id=None):
+    """
+    Send return messages to the appropriate controller.
+    """
     if message_id:
-        print(f"Sending return messages for message_id: {message_id}")
-        #Read redis using chat_conversation_id and message_id
-        return
+        transformed_message = get_message_by_id (chat_conversation_id, message_id)            
     else:
-        print(f"Sending return messages for chat_conversation_id: {chat_conversation_id}")
-        # Process the message with an external application
-        #response = external_app_process(standardized_message)
-    #transformed_response = transform_response(response, standardized_message['platform'])
-    #send_response(transformed_response, standardized_message['platform'])
-    #pass
-    return
+        transformed_message = get_last_message_from_conversation(chat_conversation_id)
+
+    if transformed_message:
+            platform = transformed_message.platform
+            function = get_controller(platform)
+            function(messages, transformed_message)
+
 

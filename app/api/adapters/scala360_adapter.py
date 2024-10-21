@@ -1,7 +1,9 @@
 from typing import Dict
 from app.api.adapters.platform_adapter import PlatformAdapter
-from app.api.models.message_model import MessageModel
-from app.api.models.configuration_model import ConfigurationModel  # Add this import
+from app.api.models.message_model import MessageModel, Metadata, OriginalMessage
+from app.api.models.configuration_model import ConfigurationModel
+from datetime import datetime
+
 
 class Scala360Adapter(PlatformAdapter):
     """
@@ -9,29 +11,46 @@ class Scala360Adapter(PlatformAdapter):
     Handles conversion between Scala360-specific messages and the universal format.
     """
 
-    def to_universal(self, platform_message: Dict) -> MessageModel:
+    def to_universal(self, full_message: Dict) -> MessageModel:
         """
         Convert Scala360 message to universal MessageModel.
         """
-        message = platform_message["message"]
-        headers = platform_message["headers"]
-        query_params = platform_message["query_params"]
+        message = full_message["message"]
+        headers = full_message["headers"]
+        query_params = full_message["query_params"]
+        
+        original_message = OriginalMessage(
+            headers=headers,
+            query_params=query_params,
+            message=message
+        )
+
+        required_fields = {
+            "nextStateId": message.get("default_box", None),
+            "conversation-token": headers.get("conversation-token", None),
+            "authorization": headers.get("authorization", None),
+            'slug': message.get("slug", None), 
+            'agent_campaing_box': message.get("agent_campaing_box", None),
+            'scala_auth': message.get("auth", None),
+            'meta_auth': headers.get("authorization", None)
+        }
+
+        metadata = Metadata(
+            original_message=original_message,
+            required_fields=required_fields
+        )
+
+        messages = messages_content_creator(message)
 
         return MessageModel(
-            message_id=message.get("id"),
             platform="scala360",
-            sender_id=message.get("owner"),
-            receiver_id=message.get("conversation_id"),
-            timestamp=message.get("created_at"),
-            message_type=message.get("type"),
-            content=message.get("content"),
-            media=message.get("mediaUrl"),
-            interactive=None,  # Adjust if Scala360 supports interactive elements
-            metadata={
-                "headers": headers,
-                "query_params": query_params,
-                "original_message": message
-            }
+            user_name=message.get("message", {}).get("owner_name_wa", None),
+            tenant_id=str(message.get("message", {}).get("company_id")),
+            sender_id=message.get("message", {}).get("owner"),
+            receiver_id=message.get("whatsapp_number"),
+            timestamp=datetime.now().isoformat(),  # Use current time if not available
+            messages=messages,
+            metadata=metadata
         )
 
     def from_universal(self, universal_message: MessageModel) -> Dict:
@@ -70,3 +89,25 @@ class Scala360Adapter(PlatformAdapter):
         response = requests.post(config.webhook_url, json=scala_message, headers=headers)
         response.raise_for_status()
         return response.json()
+
+
+def messages_content_creator(message: Dict) -> Dict:
+    """
+    Creates the content of the message to be sent to Scala360.
+    """
+    messages = []
+    if message['message']['type'] == "text":
+        messages.append(
+            {
+                "message_type": "text",
+                "text": {
+                    "body": message['message']['content']
+                }
+            }
+        )
+
+    #TODO: Add other message types
+    else:
+        pass
+    
+    return messages

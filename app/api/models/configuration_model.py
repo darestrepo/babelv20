@@ -9,6 +9,3 @@ class ConfigurationModel(BaseModel):
     sender_id: Optional[str] = Field(default=None, description="Sender's unique identifier")
     receiver_id: Optional[str] = Field(default=None, description="Receiver's unique identifier")
     additional_params: Dict[str, Any] = Field(default_factory=dict, description="Additional configuration parameters")
-
-    class Config:
-        orm_mode = True

@@ -1,6 +1,5 @@
-from celery_worker.tasks import process_message_task
-from api.services.configuration_service import get_tenant_config, get_conversation_config
-from utils.helpers import send_outbound_message
+from app.api.services.configuration_service import get_tenant_config, get_conversation_config
+from tasks import process_message_task
 
 def dispatch_message(standardized_message: dict):
     platform = standardized_message['platform']
@@ -16,4 +15,6 @@ def dispatch_message(standardized_message: dict):
     # Merge tenant and conversation configs, with conversation config taking precedence
     config = {**tenant_config, **(conversation_config or {})}
 
-    send_outbound_message(standardized_message, config)
+    # Queue the message for processing
+    process_message_task.delay(standardized_message, config)
+    return {"status": "Message queued for processing"}
